@@ -107,12 +107,16 @@ def update_cfg(cfg, backend_routes, vhost):
         frontend.append("reqadd X-Forwarded-Proto:\ https")
     if vhost:
         added_vhost = {}
-        for _, domain_name in vhost.iteritems():
-            if not added_vhost.has_key(domain_name):
-                domain_str = domain_name.upper().replace(".", "_")
-                frontend.append("acl host_%s hdr(host) -i %s" % (domain_str, domain_name))
-                frontend.append("use_backend %s_cluster if host_%s" % (domain_str, domain_str))
-                added_vhost[domain_name] = domain_str
+        for _, domain_names in vhost.iteritems():
+            domain_names_list = domain_names.split(",")
+            domain_str = domain_names_list[0].strip().upper().replace(".", "_")
+
+            for domain_name in domain_names_list:
+                domain_name = domain_name.strip()
+                if not added_vhost.has_key(domain_name):
+                    frontend.append("acl host_%s hdr(host) -i %s" % (domain_str, domain_name))
+                    frontend.append("use_backend %s_cluster if host_%s" % (domain_str, domain_str))
+                    added_vhost[domain_name] = domain_str
     else:
         frontend.append("default_backend default_service")
     cfg["frontend default_frontend"] = frontend
@@ -120,7 +124,8 @@ def update_cfg(cfg, backend_routes, vhost):
     # Set backend
     if vhost:
         added_vhost = {}
-        for service_name, domain_name in vhost.iteritems():
+        for service_name, domain_names in vhost.iteritems():
+            domain_name = domain_names.split(",")[0]
             domain_str = domain_name.upper().replace(".", "_")
             service_name = service_name.upper()
             if added_vhost.has_key(domain_name):
